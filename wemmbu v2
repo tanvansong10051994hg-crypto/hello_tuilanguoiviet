@@ -1,0 +1,155 @@
+-- LocalScript "tuanevade" - Chuyên dụng cho Fling Things and People (FTAP)
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- 1. Tạo ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "tuanevade"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- 2. Nút Mở/Đóng GUI
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Name = "ToggleButton"
+toggleBtn.Size = UDim2.new(0, 100, 0, 35)
+toggleBtn.Position = UDim2.new(0, 10, 0, 10)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Text = "Đóng/Mở GUI"
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.TextSize = 14
+toggleBtn.Parent = screenGui
+
+-- 3. Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 260, 0, 180)
+mainFrame.Position = UDim2.new(0.5, -130, 0.5, -90)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- 4. Tiêu đề tuanevade
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Text = "tuanevade"
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextSize = 16
+titleLabel.Parent = mainFrame
+
+-- 5. Ô nhập tên người chơi
+local nameBox = Instance.new("TextBox")
+nameBox.Size = UDim2.new(0.9, 0, 0, 30)
+nameBox.Position = UDim2.new(0.05, 0, 0.23, 0)
+nameBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+nameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+nameBox.PlaceholderText = "Nhập tên người chơi..."
+nameBox.Text = ""
+nameBox.Font = Enum.Font.SourceSans
+nameBox.TextSize = 14
+nameBox.Parent = mainFrame
+
+-- 6. Nút Bring Tên Lửa tới Target Player
+local btnTarget = Instance.new("TextButton")
+btnTarget.Size = UDim2.new(0.9, 0, 0, 35)
+btnTarget.Position = UDim2.new(0.05, 0, 0.46, 0)
+btnTarget.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+btnTarget.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnTarget.Text = "Bring Tên Lửa -> Người chơi (+1000)"
+btnTarget.Font = Enum.Font.SourceSansBold
+btnTarget.TextSize = 13
+btnTarget.Parent = mainFrame
+
+-- 7. Nút Bring Tên Lửa tới Bản thân
+local btnSelf = Instance.new("TextButton")
+btnSelf.Size = UDim2.new(0.9, 0, 0, 35)
+btnSelf.Position = UDim2.new(0.05, 0, 0.70, 0)
+btnSelf.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+btnSelf.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnSelf.Text = "Bring Tên Lửa -> Bản thân (+1000)"
+btnSelf.Font = Enum.Font.SourceSansBold
+btnSelf.TextSize = 13
+btnSelf.Parent = mainFrame
+
+-- LOGIC KÉO RÊ GUI (DRAGGABLE)
+local dragging, dragInput, dragStart, startPos
+mainFrame.InputBegan:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+dragging = true
+dragStart = input.Position
+startPos = mainFrame.Position
+input.Changed:Connect(function()
+if input.UserInputState == Enum.UserInputState.End then dragging = false end
+end)
+end
+end)
+
+mainFrame.InputChanged:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+dragInput = input
+end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+if input == dragInput and dragging then
+local delta = input.Position - dragStart
+mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+end)
+
+toggleBtn.MouseButton1Click:Connect(function()
+mainFrame.Visible = not mainFrame.Visible
+end)
+
+-- LOGIC BRING MISSILE CHUYÊN DỤNG CHO FTAP
+local function bringMissilesTo(targetCFrame)
+local destination = targetCFrame + Vector3.new(0, 1000, 0)
+
+for _, obj in ipairs(workspace:GetDescendants()) do  
+	local nameLower = obj.Name:lower()  
+	-- FTAP đặt tên là Missile hoặc Missle (viết sai tả ở bản cũ)  
+	if nameLower:find("missile") or nameLower:find("missle") or nameLower:find("rocket") or nameLower:find("nuke") then  
+		if obj:IsA("Model") then  
+			obj:PivotTo(destination)  
+			for _, part in ipairs(obj:GetDescendants()) do  
+				if part:IsA("BasePart") then  
+					part.AssemblyLinearVelocity = Vector3.zero  
+					part.AssemblyAngularVelocity = Vector3.zero  
+				end  
+			end  
+		elseif obj:IsA("BasePart") then  
+			obj.CFrame = destination  
+			obj.AssemblyLinearVelocity = Vector3.zero  
+			obj.AssemblyAngularVelocity = Vector3.zero  
+		end  
+	end  
+end
+
+end
+
+btnTarget.MouseButton1Click:Connect(function()
+local text = nameBox.Text:lower()
+if text == "" then return end
+
+local targetPlayer = nil  
+for _, plr in ipairs(Players:GetPlayers()) do  
+	if plr.Name:lower():find(text) or plr.DisplayName:lower():find(text) then  
+		targetPlayer = plr  
+		break  
+	end  
+end  
+  
+if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then  
+	bringMissilesTo(targetPlayer.Character.HumanoidRootPart.CFrame)  
+end
+
+end)
+
+btnSelf.MouseButton1Click:Connect(function()
+if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+bringMissilesTo(LocalPlayer.Character.HumanoidRootPart.CFrame)
+end
+end)
