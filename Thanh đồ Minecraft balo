@@ -1,0 +1,1010 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+
+local player = Players.LocalPlayer
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "MinecraftCreative"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+--==================================================
+-- BLOCK
+--==================================================
+
+local blocks = {
+	Stone = Color3.fromRGB(125,125,125),
+	Dirt = Color3.fromRGB(120,75,40),
+	Grass = Color3.fromRGB(70,170,70),
+	Wood = Color3.fromRGB(130,85,45),
+	Planks = Color3.fromRGB(180,120,60),
+	Glass = Color3.fromRGB(170,220,255),
+	Brick = Color3.fromRGB(170,70,50),
+	["Gold Block"] = Color3.fromRGB(255,200,30),
+	["Iron Block"] = Color3.fromRGB(180,180,180),
+	["Diamond Block"] = Color3.fromRGB(50,220,220),
+	TNT = Color3.fromRGB(210,40,40),
+	Water = Color3.fromRGB(40,120,255),
+	Lava = Color3.fromRGB(255,90,10)
+}
+
+local armorList = {
+	"Diamond Helmet",
+	"Diamond Chestplate",
+	"Diamond Leggings",
+	"Diamond Boots",
+	"Elytra"
+}
+
+local armorHealth = {
+	["Diamond Helmet"] = 120,
+	["Diamond Chestplate"] = 200,
+	["Diamond Leggings"] = 160,
+	["Diamond Boots"] = 120
+}
+
+--==================================================
+-- FOLDER BLOCK CỦA MÌNH
+--==================================================
+
+local myBlocks = Instance.new("Folder")
+myBlocks.Name = "MyCreativeBlocks_" .. player.UserId
+myBlocks.Parent = workspace
+
+--==================================================
+-- INVENTORY
+--==================================================
+
+local inventory = {}
+
+local function addInventory(name)
+	inventory[name] = true
+end
+
+for name in pairs(blocks) do
+	addInventory(name)
+end
+
+for _,name in ipairs(armorList) do
+	addInventory(name)
+end
+
+addInventory("Flint & Steel")
+
+--==================================================
+-- BALO
+--==================================================
+
+local bag = Instance.new("TextButton")
+bag.Size = UDim2.new(0,65,0,55)
+bag.Position = UDim2.new(1,-75,1,-140)
+bag.Text = "BALO"
+bag.TextSize = 14
+bag.BackgroundColor3 = Color3.fromRGB(50,50,50)
+bag.TextColor3 = Color3.new(1,1,1)
+bag.Parent = gui
+
+local menu = Instance.new("Frame")
+menu.Size = UDim2.new(0,350,0,440)
+menu.Position = UDim2.new(.5,-175,.5,-220)
+menu.BackgroundColor3 = Color3.fromRGB(40,40,40)
+menu.Visible = false
+menu.Parent = gui
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,0,0,45)
+title.BackgroundTransparency = 1
+title.Text = "CREATIVE BALO"
+title.TextSize = 22
+title.TextColor3 = Color3.new(1,1,1)
+title.Parent = menu
+
+local close = Instance.new("TextButton")
+close.Size = UDim2.new(0,45,0,40)
+close.Position = UDim2.new(1,-50,0,3)
+close.Text = "X"
+close.TextSize = 20
+close.Parent = menu
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1,-20,1,-55)
+scroll.Position = UDim2.new(0,10,0,50)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 6
+scroll.Parent = menu
+
+local grid = Instance.new("UIGridLayout")
+grid.CellSize = UDim2.new(0,155,0,45)
+grid.CellPadding = UDim2.new(0,6,0,6)
+grid.Parent = scroll
+
+--==================================================
+-- HOTBAR 9 Ô
+--==================================================
+
+local hotbar = Instance.new("Frame")
+hotbar.Size = UDim2.new(0,450,0,60)
+hotbar.Position = UDim2.new(.5,-225,1,-75)
+hotbar.BackgroundColor3 = Color3.fromRGB(40,40,40)
+hotbar.Parent = gui
+
+local hotLayout = Instance.new("UIListLayout")
+hotLayout.FillDirection = Enum.FillDirection.Horizontal
+hotLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+hotLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+hotLayout.Padding = UDim.new(0,3)
+hotLayout.Parent = hotbar
+
+local hotSlots = {}
+local hotbarItems = {}
+
+for i = 1,9 do
+	local slot = Instance.new("TextButton")
+	slot.Name = "Slot"..i
+	slot.Size = UDim2.new(0,47,0,50)
+	slot.Text = tostring(i)
+	slot.TextSize = 12
+	slot.TextColor3 = Color3.new(1,1,1)
+	slot.BackgroundColor3 = Color3.fromRGB(70,70,70)
+	slot.Parent = hotbar
+	hotSlots[i] = slot
+end
+
+--==================================================
+-- NÚT ĐẶT / PHÁ
+--==================================================
+
+local placeButton = Instance.new("TextButton")
+placeButton.Size = UDim2.new(0,75,0,70)
+placeButton.Position = UDim2.new(1,-165,1,-165)
+placeButton.Text = "ĐẶT"
+placeButton.TextSize = 17
+placeButton.BackgroundColor3 = Color3.fromRGB(50,150,60)
+placeButton.TextColor3 = Color3.new(1,1,1)
+placeButton.Visible = false
+placeButton.Parent = gui
+
+local deleteButton = Instance.new("TextButton")
+deleteButton.Size = UDim2.new(0,75,0,55)
+deleteButton.Position = UDim2.new(1,-165,1,-225)
+deleteButton.Text = "XÓA"
+deleteButton.TextSize = 15
+deleteButton.BackgroundColor3 = Color3.fromRGB(170,50,50)
+deleteButton.TextColor3 = Color3.new(1,1,1)
+deleteButton.Parent = gui
+
+--==================================================
+-- CHỌN BLOCK
+--==================================================
+
+local selected = nil
+local placing = false
+local breaking = false
+
+local function selectItem(name)
+
+	selected = name
+	placing = true
+
+	placeButton.Visible = true
+
+	for i = 1,9 do
+		hotSlots[i].BackgroundColor3 =
+			Color3.fromRGB(70,70,70)
+	end
+
+	local slot
+
+	for i = 1,9 do
+		if hotbarItems[i] == name then
+			slot = i
+			break
+		end
+	end
+
+	if slot then
+		hotSlots[slot].BackgroundColor3 =
+			Color3.fromRGB(50,150,60)
+	end
+end
+
+--==================================================
+-- RAYCAST
+--==================================================
+
+local function getRay()
+
+	local camera = workspace.CurrentCamera
+	local char = player.Character
+
+	if not camera or not char then
+		return nil
+	end
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = {
+		char
+	}
+
+	return workspace:Raycast(
+		camera.CFrame.Position,
+		camera.CFrame.LookVector * 35,
+		params
+	)
+end
+
+--==================================================
+-- TẠO BLOCK
+--==================================================
+
+local function createBlock(name,pos)
+
+	local block = Instance.new("Part")
+
+	block.Name = name
+	block.Size = Vector3.new(2,2,2)
+	block.Position = pos
+	block.Anchored = true
+	block.CanCollide = true
+	block.Color = blocks[name]
+	block.Material = Enum.Material.SmoothPlastic
+
+	block:SetAttribute("CreativeOwner",player.UserId)
+
+	if name == "Glass" then
+		block.Transparency = .45
+	end
+
+	if name == "Water" then
+		block.Transparency = .35
+		block.CanCollide = false
+		block.Material = Enum.Material.Glass
+	end
+
+	if name == "Lava" then
+		block.Transparency = .15
+		block.Material = Enum.Material.Neon
+	end
+
+	block.Parent = myBlocks
+
+	return block
+end
+
+--==================================================
+-- ĐẶT BLOCK
+--==================================================
+
+local function placeBlock()
+
+	if not placing or not selected then
+		return
+	end
+
+	if selected == "Flint & Steel"
+	or selected == "Diamond Helmet"
+	or selected == "Diamond Chestplate"
+	or selected == "Diamond Leggings"
+	or selected == "Diamond Boots"
+	or selected == "Elytra" then
+		return
+	end
+
+	local result = getRay()
+	local camera = workspace.CurrentCamera
+
+	if not camera then return end
+
+	local pos
+
+	if result then
+		pos = result.Position + result.Normal * 1.01
+	else
+		pos = camera.CFrame.Position +
+			camera.CFrame.LookVector * 10
+	end
+
+	pos = Vector3.new(
+		math.floor(pos.X/2+.5)*2,
+		math.floor(pos.Y/2+.5)*2,
+		math.floor(pos.Z/2+.5)*2
+	)
+
+	local newBlock = createBlock(selected,pos)
+
+	--================================================
+	-- WATER CHẢY
+	--================================================
+
+	if selected == "Water" then
+
+		task.spawn(function()
+
+			local current = newBlock
+
+			for step = 1,6 do
+
+				if not current.Parent then
+					break
+				end
+
+				task.wait(.4)
+
+				local directions = {
+					Vector3.new(2,0,0),
+					Vector3.new(-2,0,0),
+					Vector3.new(0,0,2),
+					Vector3.new(0,0,-2)
+				}
+
+				for _,dir in ipairs(directions) do
+
+					local p = current.Position + dir
+
+					local check = workspace:Raycast(
+						p + Vector3.new(0,3,0),
+						Vector3.new(0,-6,0)
+					)
+
+					if not check then
+
+						local exists = false
+
+						for _,b in ipairs(myBlocks:GetChildren()) do
+							if b.Name == "Water"
+							and (b.Position-p).Magnitude < .5 then
+								exists = true
+								break
+							end
+						end
+
+						if not exists then
+							createBlock("Water",p)
+						end
+					end
+				end
+
+				current = current
+			end
+		end)
+	end
+
+	--================================================
+	-- LAVA CHẢY CHẬM
+	--================================================
+
+	if selected == "Lava" then
+
+		task.spawn(function()
+
+			local current = newBlock
+
+			for step = 1,5 do
+
+				if not current.Parent then
+					break
+				end
+
+				task.wait(1)
+
+				local directions = {
+					Vector3.new(2,0,0),
+					Vector3.new(-2,0,0),
+					Vector3.new(0,0,2),
+					Vector3.new(0,0,-2)
+				}
+
+				for _,dir in ipairs(directions) do
+
+					local p = current.Position + dir
+
+					local exists = false
+
+					for _,b in ipairs(myBlocks:GetChildren()) do
+						if b.Name == "Lava"
+						and (b.Position-p).Magnitude < .5 then
+							exists = true
+							break
+						end
+					end
+
+					if not exists then
+						createBlock("Lava",p)
+					end
+				end
+			end
+		end)
+	end
+end
+
+--==================================================
+-- XÓA BLOCK CỦA MÌNH
+--==================================================
+
+local function deleteMyBlock()
+
+	local result = getRay()
+
+	if not result then
+		return
+	end
+
+	local part = result.Instance
+
+	if part:IsDescendantOf(myBlocks)
+	and part:GetAttribute("CreativeOwner") == player.UserId then
+
+		part:Destroy()
+	end
+end
+
+deleteButton.Activated:Connect(deleteMyBlock)
+
+-- Giữ XÓA để xóa liên tục
+deleteButton.InputBegan:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.Touch
+	or input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+		breaking = true
+
+		task.spawn(function()
+
+			while breaking do
+				deleteMyBlock()
+				task.wait(.15)
+			end
+
+		end)
+	end
+end)
+
+deleteButton.InputEnded:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.Touch
+	or input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+		breaking = false
+	end
+end)
+
+placeButton.Activated:Connect(placeBlock)
+
+--==================================================
+-- TNT
+--==================================================
+
+local function igniteTNT(tnt)
+
+	if tnt:GetAttribute("Lit") then
+		return
+	end
+
+	tnt:SetAttribute("Lit",true)
+
+	local fire = Instance.new("Fire")
+	fire.Size = 5
+	fire.Parent = tnt
+
+	local light = Instance.new("PointLight")
+	light.Brightness = 3
+	light.Range = 12
+	light.Parent = tnt
+
+	task.wait(3)
+
+	if not tnt.Parent then
+		return
+	end
+
+	local position = tnt.Position
+
+	local explosion = Instance.new("Explosion")
+	explosion.Position = position
+	explosion.BlastRadius = 8
+	explosion.BlastPressure = 0
+	explosion.DestroyJointRadiusPercent = 0
+	explosion.Parent = workspace
+
+	-- Chỉ xóa TNT/block do mình tạo
+	for _,part in ipairs(myBlocks:GetChildren()) do
+
+		if part:IsA("BasePart")
+		and (part.Position-position).Magnitude <= 8 then
+
+			part:Destroy()
+		end
+	end
+end
+
+--==================================================
+-- BẬT LỬA
+--==================================================
+
+local function useFlintSteel()
+
+	if selected ~= "Flint & Steel" then
+		return
+	end
+
+	local result = getRay()
+
+	if not result then
+		return
+	end
+
+	local part = result.Instance
+
+	if part.Name == "TNT"
+	and part:IsDescendantOf(myBlocks) then
+
+		igniteTNT(part)
+	end
+end
+
+--==================================================
+-- GIÁP
+--==================================================
+
+local equippedArmor = {}
+
+local function updateHealth()
+
+	local char = player.Character
+	if not char then return end
+
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+
+	local hp = 100
+
+	for name in pairs(equippedArmor) do
+		hp += armorHealth[name] or 0
+	end
+
+	hum.MaxHealth = hp
+	hum.Health = hp
+end
+
+local function equipArmor(name)
+
+	local char = player.Character
+	if not char then return end
+
+	if name == "Elytra" then
+		toggleElytra()
+		return
+	end
+
+	local old = char:FindFirstChild(name)
+
+	if old then
+		old:Destroy()
+	end
+
+	local part = Instance.new("Part")
+
+	part.Name = name
+	part.Color = Color3.fromRGB(50,220,220)
+	part.Material = Enum.Material.Metal
+	part.CanCollide = false
+	part.Massless = true
+
+	local target
+
+	if name == "Diamond Helmet" then
+
+		part.Size = Vector3.new(2.3,1,2.3)
+		target = char:FindFirstChild("Head")
+
+	elseif name == "Diamond Chestplate" then
+
+		part.Size = Vector3.new(2.5,2.5,1.4)
+		target = char:FindFirstChild("UpperTorso")
+			or char:FindFirstChild("Torso")
+
+	elseif name == "Diamond Leggings" then
+
+		part.Size = Vector3.new(2.3,2.3,1.2)
+		target = char:FindFirstChild("LowerTorso")
+			or char:FindFirstChild("Torso")
+
+	elseif name == "Diamond Boots" then
+
+		part.Size = Vector3.new(1.1,1.2,1.3)
+		target = char:FindFirstChild("LeftFoot")
+			or char:FindFirstChild("Left Leg")
+	end
+
+	if target then
+
+		part.CFrame = target.CFrame
+
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = part
+		weld.Part1 = target
+		weld.Parent = part
+
+		part.Parent = char
+
+		equippedArmor[name] = true
+
+		updateHealth()
+	end
+end
+
+--==================================================
+-- ELYTRA
+--==================================================
+
+local flying = false
+local flyConnection
+local velocity
+local gyro
+local up = false
+local down = false
+
+local upButton = Instance.new("TextButton")
+upButton.Size = UDim2.new(0,60,0,60)
+upButton.Position = UDim2.new(1,-145,.5,-70)
+upButton.Text = "▲"
+upButton.TextSize = 28
+upButton.BackgroundColor3 = Color3.fromRGB(60,140,60)
+upButton.TextColor3 = Color3.new(1,1,1)
+upButton.Visible = false
+upButton.Parent = gui
+
+local downButton = Instance.new("TextButton")
+downButton.Size = UDim2.new(0,60,0,60)
+downButton.Position = UDim2.new(1,-145,.5,10)
+downButton.Text = "▼"
+downButton.TextSize = 28
+downButton.BackgroundColor3 = Color3.fromRGB(140,60,60)
+downButton.TextColor3 = Color3.new(1,1,1)
+downButton.Visible = false
+downButton.Parent = gui
+
+local function stopFly()
+
+	flying = false
+
+	if flyConnection then
+		flyConnection:Disconnect()
+		flyConnection = nil
+	end
+
+	if velocity then
+		velocity:Destroy()
+		velocity = nil
+	end
+
+	if gyro then
+		gyro:Destroy()
+		gyro = nil
+	end
+end
+
+local function startFly()
+
+	if flying then return end
+
+	local char = player.Character
+	if not char then return end
+
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local hum = char:FindFirstChildOfClass("Humanoid")
+
+	if not root or not hum then return end
+
+	flying = true
+
+	velocity = Instance.new("BodyVelocity")
+	velocity.MaxForce = Vector3.new(1000000,1000000,1000000)
+	velocity.Parent = root
+
+	gyro = Instance.new("BodyGyro")
+	gyro.MaxTorque = Vector3.new(1000000,1000000,1000000)
+	gyro.P = 30000
+	gyro.Parent = root
+
+	flyConnection = RunService.RenderStepped:Connect(function()
+
+		if not flying then return end
+
+		local camera = workspace.CurrentCamera
+
+		local v = hum.MoveDirection * 65
+
+		if up then
+			v += Vector3.new(0,55,0)
+		end
+
+		if down then
+			v += Vector3.new(0,-55,0)
+		end
+
+		velocity.Velocity = v
+
+		gyro.CFrame = CFrame.lookAt(
+			root.Position,
+			root.Position + camera.CFrame.LookVector
+		)
+	end)
+end
+
+function toggleElytra()
+
+	local char = player.Character
+	if not char then return end
+
+	local old = char:FindFirstChild("Elytra")
+
+	if old then
+
+		old:Destroy()
+
+		stopFly()
+
+		upButton.Visible = false
+		downButton.Visible = false
+
+		return
+	end
+
+	local torso =
+		char:FindFirstChild("UpperTorso")
+		or char:FindFirstChild("Torso")
+
+	if not torso then return end
+
+	local wings = Instance.new("Part")
+
+	wings.Name = "Elytra"
+	wings.Size = Vector3.new(4,3,.35)
+	wings.Color = Color3.fromRGB(70,70,70)
+	wings.Material = Enum.Material.Metal
+	wings.CanCollide = false
+	wings.Massless = true
+	wings.CFrame = torso.CFrame * CFrame.new(0,0,.8)
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = wings
+	weld.Part1 = torso
+	weld.Parent = wings
+
+	wings.Parent = char
+
+	upButton.Visible = true
+	downButton.Visible = true
+
+	startFly()
+end
+
+upButton.InputBegan:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.Touch
+	or input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+		up = true
+	end
+end)
+
+upButton.InputEnded:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.Touch
+	or input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+		up = false
+	end
+end)
+
+downButton.InputBegan:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.Touch
+	or input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+		down = true
+	end
+end)
+
+downButton.InputEnded:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.Touch
+	or input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+		down = false
+	end
+end)
+
+--==================================================
+-- HOTBAR
+--==================================================
+
+local function findSlot(name)
+
+	for i = 1,9 do
+		if hotbarItems[i] == name then
+			return i
+		end
+	end
+
+	return nil
+end
+
+local function emptySlot()
+
+	for i = 1,9 do
+		if not hotbarItems[i] then
+			return i
+		end
+	end
+
+	return nil
+end
+
+local function putOnHotbar(name)
+
+	local oldSlot = findSlot(name)
+
+	-- Ấn lại = bỏ khỏi thanh đồ
+	if oldSlot then
+
+		hotbarItems[oldSlot] = nil
+		hotSlots[oldSlot].Text = tostring(oldSlot)
+		hotSlots[oldSlot].BackgroundColor3 =
+			Color3.fromRGB(70,70,70)
+
+		if selected == name then
+			selected = nil
+			placing = false
+			placeButton.Visible = false
+		end
+
+		return
+	end
+
+	local slot = emptySlot()
+
+	if not slot then
+		return
+	end
+
+	hotbarItems[slot] = name
+	hotSlots[slot].Text = name
+	hotSlots[slot].TextSize = 9
+end
+
+--==================================================
+-- BẤM HOTBAR
+--==================================================
+
+for i = 1,9 do
+
+	hotSlots[i].Activated:Connect(function()
+
+		local name = hotbarItems[i]
+
+		if not name then
+			return
+		end
+
+		if blocks[name] then
+
+			if selected == name then
+
+				selected = nil
+				placing = false
+				placeButton.Visible = false
+
+				hotSlots[i].BackgroundColor3 =
+					Color3.fromRGB(70,70,70)
+
+			else
+
+				selectItem(name)
+
+			end
+
+		elseif name == "Flint & Steel" then
+
+			selectItem(name)
+
+		elseif armorHealth[name] then
+
+			equipArmor(name)
+
+		elseif name == "Elytra" then
+
+			toggleElytra()
+		end
+	end)
+end
+
+--==================================================
+-- REFRESH BALO
+--==================================================
+
+local function refreshInventory()
+
+	for _,v in ipairs(scroll:GetChildren()) do
+		if v:IsA("TextButton") then
+			v:Destroy()
+		end
+	end
+
+	for name in pairs(inventory) do
+
+		local button = Instance.new("TextButton")
+
+		button.Text = name
+		button.TextSize = 13
+		button.TextColor3 = Color3.new(1,1,1)
+
+		if blocks[name] then
+			button.BackgroundColor3 = blocks[name]
+		else
+			button.BackgroundColor3 =
+				Color3.fromRGB(60,90,110)
+		end
+
+		button.Parent = scroll
+
+		button.Activated:Connect(function()
+
+			putOnHotbar(name)
+
+			refreshInventory()
+		end)
+	end
+end
+
+refreshInventory()
+
+scroll.CanvasSize = UDim2.new(0,0,0,900)
+
+--==================================================
+-- BALO
+--==================================================
+
+bag.Activated:Connect(function()
+
+	refreshInventory()
+
+	menu.Visible = not menu.Visible
+end)
+
+close.Activated:Connect(function()
+	menu.Visible = false
+end)
+
+--==================================================
+-- KÍCH HOẠT BẬT LỬA
+--==================================================
+
+local function activateSelected()
+
+	if selected == "Flint & Steel" then
+		useFlintSteel()
+	end
+end
+
+placeButton.Activated:Connect(activateSelected)
+
+--==================================================
+-- RESPAWN
+--==================================================
+
+player.CharacterAdded:Connect(function()
+
+	stopFly()
+
+	upButton.Visible = false
+	downButton.Visible = false
+
+	equippedArmor = {}
+
+	task.wait(1)
+	updateHealth()
+end)
