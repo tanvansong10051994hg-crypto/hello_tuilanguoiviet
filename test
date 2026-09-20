@@ -1,0 +1,89 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "SpeedMenu"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local open = Instance.new("TextButton")
+open.Size = UDim2.new(0,70,0,35)
+open.Position = UDim2.new(0,10,0,100)
+open.Text = "Mở"
+open.Parent = gui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,220,0,150)
+frame.Position = UDim2.new(0.5,-110,0.5,-75)
+frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,0,0,35)
+title.Text = "Speed"
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
+title.Parent = frame
+
+local input = Instance.new("TextBox")
+input.Size = UDim2.new(0,180,0,35)
+input.Position = UDim2.new(0,20,0,45)
+input.PlaceholderText = "Nhập tốc độ"
+input.Text = "100"
+input.Parent = frame
+
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.new(0,180,0,40)
+toggle.Position = UDim2.new(0,20,0,95)
+toggle.Text = "TẮT"
+toggle.Parent = frame
+
+local enabled = false
+local normalSpeed = 16
+
+local function getHumanoid()
+	local char = player.Character
+	return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+toggle.MouseButton1Click:Connect(function()
+	enabled = not enabled
+
+	local hum = getHumanoid()
+	if not hum then return end
+
+	if enabled then
+		local speed = tonumber(input.Text) or 100
+		hum.WalkSpeed = speed
+		toggle.Text = "BẬT"
+	else
+		hum.WalkSpeed = normalSpeed
+		toggle.Text = "TẮT"
+	end
+end)
+
+input.FocusLost:Connect(function()
+	if enabled then
+		local hum = getHumanoid()
+		local speed = tonumber(input.Text)
+		if hum and speed then
+			hum.WalkSpeed = speed
+		end
+	end
+end)
+
+open.MouseButton1Click:Connect(function()
+	frame.Visible = not frame.Visible
+	open.Text = frame.Visible and "Đóng" or "Mở"
+end)
+
+player.CharacterAdded:Connect(function(char)
+	local hum = char:WaitForChild("Humanoid")
+	if enabled then
+		hum.WalkSpeed = tonumber(input.Text) or 100
+	else
+		hum.WalkSpeed = normalSpeed
+	end
+end)
