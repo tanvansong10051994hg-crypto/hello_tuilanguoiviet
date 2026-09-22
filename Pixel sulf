@@ -1,0 +1,160 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+local WALL_DISTANCE = 5
+local SPEED = 45
+
+local gui = Instance.new("ScreenGui")
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.fromOffset(70,45)
+btn.Position = UDim2.new(0.5,-35,1,-180)
+btn.Text = "WALL"
+btn.TextSize = 16
+btn.Parent = gui
+
+local on = false
+
+btn.Activated:Connect(function()
+	on = not on
+	btn.Text = on and "WALL ON" or "WALL OFF"
+end)
+
+-- KÉO NÚT
+local dragging = false
+local startTouch
+local startPos
+
+btn.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch
+	or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		startTouch = input.Position
+		startPos = btn.Position
+	end
+end)
+
+UIS.InputChanged:Connect(function(input)
+	if not dragging then return end
+
+	if input.UserInputType == Enum.UserInputType.Touch
+	or input.UserInputType == Enum.UserInputType.MouseMovement then
+
+		local d = input.Position - startTouch
+
+		btn.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + d.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + d.Y
+		)
+	end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch
+	or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+	end
+end)
+
+local function findWall(character)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root then return nil end
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = {character}
+
+	local dirs = {
+		root.CFrame.LookVector,
+		-root.CFrame.LookVector,
+		root.CFrame.RightVector,
+		-root.CFrame.RightVector
+	}
+
+	for _, dir in ipairs(dirs) do
+		local hit = workspace:Raycast(
+			root.Position,
+			dir * WALL_DISTANCE,
+			params
+		)
+
+		if hit then
+			return hit
+		end
+	end
+
+	return nil
+end
+
+local attachment
+local force
+
+local function startForce(root)
+	if force then return end
+
+	attachment = Instance.new("Attachment")
+	attachment.Parent = root
+
+	force = Instance.new("VectorForce")
+	force.Attachment0 = attachment
+	force.RelativeTo = Enum.ActuatorRelativeTo.World
+	force.ApplyAtCenterOfMass = true
+	force.Force = Vector3.new(
+		0,
+		root.AssemblyMass * workspace.Gravity,
+		0
+	)
+	force.Parent = root
+end
+
+local function stopForce()
+	if force then
+		force:Destroy()
+		force = nil
+	end
+
+	if attachment then
+		attachment:Destroy()
+		attachment = nil
+	end
+end
+
+RunService.Heartbeat:Connect(function()
+	local character = player.Character
+	if not character then return end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local root = character:FindFirstChild("HumanoidRootPart")
+
+	if not humanoid or not root then return end
+
+	local wall = findWall(character)
+
+	if on and wall then
+		startForce(root)
+
+		-- ĐI ĐÚNG HƯỚNG ĐANG BẤM
+		local move = humanoid.MoveDirection
+
+		if move.Magnitude > 0 then
+			root.AssemblyLinearVelocity = Vector3.new(
+				move.X * SPEED,
+				0,
+				move.Z * SPEED
+			)
+		else
+			-- Không bấm hướng thì đứng yên trên tường
+			root.AssemblyLinearVelocity = Vector3.new(0,0,0)
+		end
+
+	else
+		stopForce()
+	end
+end)
